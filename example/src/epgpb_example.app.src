@@ -1,0 +1,12 @@
+{application, epgpb_example,
+ [
+  {description, "A simple example illustrating epgpb usage"},
+  {vsn, "1"},
+  {registered, []},
+  {applications, [
+                  kernel,
+                  stdlib
+                 ]},
+  {mod, { epgpb_example_app, []}},
+  {env, []}
+ ]}.

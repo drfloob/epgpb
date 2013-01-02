@@ -1,4 +1,15 @@
-epgsql = poolboy + epgsql
-       = "A standalone PostgreSQL database connection pool server application, created to support declarative application composition".
+Epgpb = poolboy + epgsql,
+Desc   = "A standalone PostgreSQL database connection pool server 
+       	    application, created to support declarative application 
+	    composition".
 
-This is not much more than the poolboy epgsql example with the full epgsql API implementated in poolboy workers.
+--------------------------------------------------------------------
+
+This code is not much more than the poolboy epgsql example with the
+full epgsql API implementated in poolboy workers. A code generator
+(see `gen/`) builds this application dynamically from the compiled
+epgsql binaries.
+
+To use this with rebar, declare epgpb as a dependency, define your
+poolboy pool setup for the epgpb application in your config file(s),
+compile, and start the application.
