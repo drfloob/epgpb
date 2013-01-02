@@ -1,0 +1,8 @@
+deps
+ebin
+*.dump
+.eunit
+**/rel/*
+!**/rel/reltool.config
+
+

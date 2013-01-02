@@ -1,0 +1,147 @@
+#!/usr/bin/env escript
+
+main(_Args) ->
+    %% TODO: dynamically compile epgsql with debug info
+    {ok, {pgsql, [{abstract_code, {raw_abstract_v1, AST}}]}} = beam_lib:chunks("../deps/epgsql/ebin/pgsql.beam", [abstract_code]),
+    io:format("~p~n", [AST]),
+
+    Exports = parse_exports(AST),
+    %% io:format("~p~n", [Exports]),
+
+    Functions = parse_functions(AST, Exports),
+    %% io:format("~p~n", [Functions]),
+
+    build_epgpb(Exports, Functions),
+    build_epgpb_worker(Functions),
+
+    ok.
+
+
+%%------------------------------------------------------------------------------
+%% Private
+
+parse_exports(AST) ->
+    parse_exports(AST, []).
+
+
+parse_exports([], Set) ->
+    lists:reverse(Set);
+parse_exports([{attribute, _, export, Exports} | Rest], Set) ->
+    parse_exports(Rest, add_exports(Exports, Set));
+parse_exports([_|Rest], Set) ->
+    parse_exports(Rest, Set).
+
+
+
+add_exports([], Set) ->
+    Set;
+add_exports([{X, _}|Rest], Set) 
+  when X == connect; X == close ->
+    add_exports(Rest, Set);
+add_exports([Exp|Rest], Set) ->
+    add_exports(Rest, [Exp|Set]).
+
+
+
+
+parse_functions(AST, Exports) ->
+    parse_functions(AST, Exports, []).
+
+parse_functions([], _, Funcs) ->
+    lists:reverse(Funcs);
+parse_functions([Func={function, _, Name, Arity, _} | Rest], Exports, Funcs) ->
+    case lists:member({Name, Arity}, Exports) of
+	true ->
+	    parse_functions(Rest, Exports, add_func(Func, Funcs));
+	_ ->
+	    parse_functions(Rest, Exports, Funcs)
+    end;
+parse_functions([_|Rest], Exports, Funcs) ->
+    parse_functions(Rest, Exports, Funcs).
+
+
+
+
+add_func(Func, Funcs) ->
+    [Func|Funcs].
+
+
+
+%%------------------------------------------------------------------------------
+%% epgpb.erl generation
+
+build_epgpb(ASTExports, ASTFunctions) ->
+    HDR = "-module(epgpb).",
+    ExportList = string:join([io_lib:format("~p/~p", [F,A]) || {F, A} <- ASTExports], ", "),
+    ExportStr = ["-export([", ExportList, "])."],
+
+    FunList = lists:map(fun(X)-> build_epgpb_fun(X) end, ASTFunctions),
+    FunStr = string:join(FunList, "\n\n"),
+
+    FileStr = string:join([HDR, ExportStr, "\n", FunStr], "\n"),
+    ok = file:write_file("../src/epgpb.erl", FileStr).
+    
+
+build_epgpb_fun({function, _, ASTName, _, [{clause, _, [_|ASTVars], [], _}]}) ->
+    io:format("~p: ~p~n", [ASTName, ASTVars]),
+    %% Vars = [atom_to_list(X) || {var, _, X} <- ASTVars],
+    Vars = parse_vars(ASTVars),
+    Name = atom_to_list(ASTName),
+    FuncArgList = string:join(["PoolName"|Vars], ", "),
+
+    FuncSpec = [Name, "(", FuncArgList, ") ->"],
+    GSCArgList = string:join([Name| Vars], ", "),
+    FuncBody = io_lib:format("    poolboy:transaction(PoolName, 
+		 	fun(W) -> 
+		 		gen_server:call(W, {~s}) 
+		 	end).", [GSCArgList]),
+
+    FileStr = string:join([FuncSpec, FuncBody], "\n"),
+    FileStr.
+
+%%------------------------------------------------------------------------------
+%% epgpb_worker.erl generation
+
+build_epgpb_worker(ASTFunctions) ->
+    {ok, HdrBin} = file:read_file("epgpb_worker.head"),
+    Hdr = binary_to_list(HdrBin),
+    {ok, TailBin} = file:read_file("epgpb_worker.tail"),
+    Tail = binary_to_list(TailBin),
+    Funcs = lists:map(fun(X)-> build_epgpb_worker_fun(X) end, ASTFunctions),
+    FuncStr = string:join(Funcs, "\n\n"),
+
+    FileStr = string:join([Hdr, FuncStr, Tail], "\n"),
+    ok = file:write_file("../src/epgpb_worker.erl", FileStr).
+
+
+
+
+build_epgpb_worker_fun({function, _, ASTName, _, [{clause, _, [_|ASTVars], [], _}]}) ->
+    %% handle_call({squery, Sql}, _From, #state{conn=Conn}=State) ->
+    %%     {reply, pgsql:squery(Conn, Sql), State};
+
+    %% Vars = [atom_to_list(X) || {var, _, X} <- ASTVars],
+    Vars = parse_vars(ASTVars),
+    Name = atom_to_list(ASTName),
+
+    CallVarList = string:join([Name|Vars], ", "),
+    ArgList = string:join(["Conn"|Vars], ", "),
+
+
+    ["handle_call({", CallVarList, "}, _From, #state{conn=Conn}=State) ->\n"
+     , "    {reply, pgsql:", Name, "(", ArgList, "), State};"].
+
+
+
+
+parse_vars(List) ->
+    parse_vars(List, [], 0).
+
+parse_vars([], List, _) ->
+    lists:reverse(List);
+parse_vars([{var, _, Name} | Rest], List, N) ->
+    parse_vars(Rest, [atom_to_list(Name)|List], N);
+parse_vars([_|Rest], List, N) ->
+    Dummy = lists:flatten(["X", integer_to_list(N)]),
+    parse_vars(Rest, [Dummy|List], N+1).
+

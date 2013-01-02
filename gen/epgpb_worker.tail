@@ -1,0 +1,18 @@
+
+
+handle_call(_Other, _From, State) ->
+    {reply, ok, State}.
+
+
+handle_cast(_Msg, State) ->
+    {noreply, State}.
+
+handle_info(_Info, State) ->
+    {noreply, State}.
+
+terminate(_Reason, #state{conn=Conn}) ->
+    ok = pgsql:close(Conn),
+    ok.
+
+code_change(_OldVsn, State, _Extra) ->
+    {ok, State}.

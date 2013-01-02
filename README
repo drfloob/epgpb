@@ -1,0 +1,4 @@
+epgsql = poolboy + epgsql
+       = "A standalone PostgreSQL database connection pool server application, created to support declarative application composition".
+
+This is not much more than the poolboy epgsql example with the full epgsql API implementated in poolboy workers.
