@@ -11,5 +11,6 @@ full epgsql API implementated in poolboy workers. A code generator
 epgsql binaries.
 
 To use this with rebar, declare epgpb as a dependency, define your
-poolboy pool setup for the epgpb application in your config file(s),
-compile, and start the application.
+poolboy pool setup for the epgpb application in your config file(s)
+(or dynamically, as in the `example` app), compile and start the
+application.
