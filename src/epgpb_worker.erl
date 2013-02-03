@@ -19,6 +19,15 @@ init(Args) ->
     {ok, Conn} = pgsql:connect(Hostname, Username, Password, [
         {database, Database}
     ]),
+
+    %% user-specific setup
+    SetupFun = proplists:get_value(setup, Args),
+    case SetupFun of
+	undefined -> ok;
+	{Mod, Fun} -> erlang:apply(Mod, Fun, [Conn]);
+	{Mod, Fun, SetupArgs} -> erlang:apply(Mod, Fun, SetupArgs)
+    end,
+
     {ok, #state{conn=Conn}}.
 
 
