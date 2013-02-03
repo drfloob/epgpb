@@ -14,21 +14,23 @@ epgsql binaries.
 ## To use this with rebar:
 
  * declare epgpb as a dependency of your application, 
- * define your poolboy/epgsql environment config on the epgpb 
+ * define your poolboy/epgsql configuration for the `epgpb` 
      application, 
- * `rebar get-deps compile`
- * start the epgpb application.
+ * run `rebar get-deps compile`, and
+ * run erl and start the epgpb application.
 
 
 ## To build and run the example:
 
-First, you need to modify your pg_hba.conf to include the line:
+The example requires a dummy user and database. To allow the example
+user to login, you need to modify your pg_hba.conf to include the
+line:
 
 ```
 local   db1     db1     password
 ```
 
-Then we must setup the example database and role (both "db1").
+To setup the example database and role (both "db1").
 
 ```bash
 cd example
