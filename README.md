@@ -1,9 +1,9 @@
-'''erlang
+```erlang
 Epgpb = poolboy + epgsql,
 Desc   = "A standalone PostgreSQL database connection pool server 
        	    application, created to support declarative application 
 	    composition".
-'''
+```
 --------------------------------------------------------------------
 
 This code is not much more than the poolboy epgsql example with the
@@ -24,9 +24,9 @@ epgsql binaries.
 
 First, you need to modify your pg_hba.conf to include the line:
 
-'''
+```
 local   db1     db1     password
-'''
+```
 
 Then we must setup the example database and role (both "db1").
 
