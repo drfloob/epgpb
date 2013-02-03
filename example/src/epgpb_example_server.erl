@@ -6,7 +6,7 @@
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
-	 terminate/2, code_change/3]).
+	 terminate/2, code_change/3, setup/1]).
 
 -define(SERVER, ?MODULE). 
 -record(state, {}).
@@ -18,6 +18,11 @@
 start_link() ->
     gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
 
+
+%% use the pgsql connection directly here
+setup(Conn) ->
+    pgsql:squery(Conn, "SET search_path TO my_schema").
+    
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -35,7 +40,10 @@ handle_cast(_Msg, State) ->
 
 %% Here be the magic
 handle_info(timeout, State) ->
-    {ok, _, [{CountBin}]} = epgpb:squery(pool1, "select count(*) from test"),
+    {ok, _, [{SP}]} = epgpb:squery(pool1, "show search_path"),
+    error_logger:info_msg("Search path: ~p~n", [SP]),
+    
+    {ok, _, [{CountBin}]} = epgpb:squery(pool1, "select count(num) from test"),
     Count = list_to_integer(binary_to_list(CountBin)),
     error_logger:info_msg("Before insertion: ~p~n", [Count]),
 
